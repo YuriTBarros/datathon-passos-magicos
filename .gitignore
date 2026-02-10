@@ -1,2 +1,13 @@
 env/
 venv/
+feature_repo/data/
+feature_repo/*.db
+.feast-test-server/
+mlruns/
+.trash/
+data/raw/*
+data/processed/*
+data/external/*
+feature_repo/data/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
