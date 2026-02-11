@@ -8,9 +8,7 @@ def main():
     print("Iniciando processamento dos dados da Passos Mágicos...")
     
     # 1. Ingestão e Unificação
-    # O dirname(__file__) pega a pasta 'src/data'
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    # Subimos dois níveis para chegar na raiz e entrar em 'data/raw'
     file_path = os.path.join(base_dir, '../../data/raw/PEDE_2022-2024.xlsx')
     
     if not os.path.exists(file_path):
@@ -34,25 +32,21 @@ def main():
     df = prep.calcular_atingiu_pv(df)
     
     # 3. Imputação de ML (Bolsa/Indicado)
-    # Treinamos com 2022 para preencher 2023/24
     print("Iniciando treino do modelo de Bolsa (imputação)...")
     modelo, feats, f_map = prep.treinar_modelo_bolsa_v3(df)
     
-    # SÓ EXECUTA O PREENCHIMENTO SE O TREINO DER CERTO (Evita TypeError: NoneType)
     if modelo is not None and f_map is not None:
         df = prep.preencher_coluna_indicado(df, modelo, feats, f_map)
         print("✅ Coluna 'indicado' preenchida via ML.")
     else:
         print("⚠️ Aviso: Pulando imputação de bolsa devido a falta de dados válidos em 2022.")
     
-    # --- 🚀 NOVO: Geração de Targets para ML ---
-    # Realizamos isso ANTES da limpeza final para aproveitar as colunas 'ra' e 'ano'
+    # --- 🚀 Geração de Targets para ML ---
     print("Calculando indicadores de Evasão e Delta de Defasagem (Momentum)...")
     df = prep.rotular_evasao(df)
     df = prep.calcular_delta_defasagem(df)
     
     # 4. Limpeza Final, Normalização e Encoding
-    # Remove colunas brutas e transforma chaves em números/dummies
     print("Executando limpeza final e encodings...")
     df_final = prep.pipeline_limpeza_final(df)
     
@@ -61,17 +55,22 @@ def main():
         df_final['idade'] = df_final['idade'].fillna(0).astype(int)
     
     # 5. Salvar o Produto Final
-    output_path = os.path.join(base_dir, '../../data/processed/dataset_final.csv')
+    # ⚠️ MUDANÇA: Agora salvamos em PARQUET para total compatibilidade com o Feast
+    output_path_parquet = os.path.join(base_dir, '../../data/processed/dataset_final.parquet')
+    output_path_csv = os.path.join(base_dir, '../../data/processed/dataset_final.csv')
     
     # Garante que a pasta 'processed' existe
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    os.makedirs(os.path.dirname(output_path_parquet), exist_ok=True)
     
-    df_final.to_csv(output_path, index=False)
+    # Salvando em ambos os formatos (CSV para você abrir no Excel, Parquet para o Feast)
+    df_final.to_parquet(output_path_parquet, index=False)
+    df_final.to_csv(output_path_csv, index=False)
     
     print("-" * 30)
-    print(f"🚀 Dataset Processado com Sucesso em: {os.path.abspath(output_path)}")
+    print(f"🚀 Dataset Processado com Sucesso!")
+    print(f"📁 Parquet (Feast): {os.path.abspath(output_path_parquet)}")
+    print(f"📁 CSV (Análise): {os.path.abspath(output_path_csv)}")
     print(f"Total de registros: {len(df_final)}")
-    print(f"Colunas geradas: {len(df_final.columns)}")
     print("-" * 30)
 
 if __name__ == "__main__":

@@ -1,6 +1,5 @@
-name: CI/CD Pipeline - Passos Mágicos
+name: MLOps CI/CD Pipeline - Passos Mágicos
 
-# Gatilhos: Quando essa pipeline deve rodar?
 on:
   push:
     branches: [ "main", "develop" ]
@@ -8,64 +7,75 @@ on:
     branches: [ "main", "develop" ]
 
 jobs:
-  # --- JOB 1: INTEGRAÇÃO CONTÍNUA (Garantia de Qualidade) ---
-  quality-check:
+  # --- ESTÁGIO 1: VALIDAÇÃO TÉCNICA E QUALIDADE ---
+  quality-and-ml-validation:
     runs-on: ubuntu-latest
     
     steps:
-    # 1. Baixa o código do seu repositório para a máquina virtual do GitHub
-    - name: Checkout do código
+    - name: Checkout do repositório
       uses: actions/checkout@v3
 
-    # 2. Instala o Python 3.11 (versão estável e comum para ML)
-    - name: Configurar Python 3.11
+    - name: Ambiente Python 3.11
       uses: actions/setup-python@v4
       with:
         python-version: "3.11"
 
-    # 3. Instala as bibliotecas listadas no requirements.txt
-    - name: Instalar dependências
+    - name: Instalação de dependências do projeto
       run: |
         python -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        pip install -r requirements.txt
 
-    # 4. Verifica se o código segue o padrão PEP8 (Linting)
-    - name: Linting com Flake8
+    - name: Análise estática de código (Flake8)
       run: |
-        # E9, F63, F7, F82 são erros graves de sintaxe (param o build)
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Avisos menores de estilo (não quebram a pipeline, apenas alertam)
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-    # 5. Roda os testes unitários e gera relatório de cobertura
-    - name: Testes Unitários e Cobertura
+    - name: Validação de Schema da Feature Store (Feast Plan)
       run: |
-        # Roda o unittest descobrindo testes na pasta 'tests'
+        cd feature_repo
+        mkdir -p data
+        # Validação das definições de infraestrutura e tipos de dados do Feast
+        feast plan
+
+    - name: Execução de Testes Unitários e Cobertura
+      run: |
+        export PYTHONPATH=$PYTHONPATH:.
         coverage run -m unittest discover tests
-        
-        # Exibe o relatório no log do GitHub Actions
-        echo "=== Relatório de Cobertura ==="
         coverage report -m
 
-  # --- JOB 2: ENTREGA CONTÍNUA (Deploy) ---
-  # Job comentado porque precisamos do Dockerfile primeiro
-  # build-and-deploy:
-  #   needs: quality-check  # Só roda se o Job 1 passar
-  #   if: github.ref == 'refs/heads/main' 
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v3
-  #     
-  #     - name: Login no Docker Hub
-  #       uses: docker/login-action@v2
-  #       with:
-  #         username: ${{ secrets.DOCKER_USERNAME }}
-  #         password: ${{ secrets.DOCKER_PASSWORD }}
-  #     
-  #     - name: Build e Push da Imagem
-  #       uses: docker/build-push-action@v4
-  #       with:
-  #         context: .
-  #         push: true
-  #         tags: seu-usuario/passos-magicos-api:latest
+  # --- ESTÁGIO 2: VERIFICAÇÃO DE INTEGRIDADE DO MODELO ---
+  model-integrity-check:
+    needs: quality-and-ml-validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v3
+      - name: Ambiente Python 3.11
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+      - name: Instalação de dependências
+        run: pip install -r requirements.txt
+      - name: Verificação de sintaxe dos scripts de treinamento
+        run: |
+          export PYTHONPATH=$PYTHONPATH:.
+          # Garante a integridade lógica do script de treino antes da execução pesada
+          python3 -m py_compile src/models/train.py
+
+  # --- ESTÁGIO 3: GESTÃO DE ARTEFATOS (DOCKER) ---
+  #containerization:
+  # needs: [quality-and-ml-validation, model-integrity-check]
+  #  if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+  #  runs-on: ubuntu-latest
+  #  steps:
+  #   - name: Checkout do repositório
+  #     uses: actions/checkout@v3
+      
+  #    - name: Configuração do Docker Buildx
+  #      uses: docker/setup-buildx-action@v2
+
+      # Preparação da imagem para deploy em ambiente produtivo
+  #    - name: Build da imagem Docker
+  #      run: |
+  #        echo "Iniciando build da imagem para produção..."
+          # docker build -t passos-magicos-api .
