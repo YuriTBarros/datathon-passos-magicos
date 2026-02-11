@@ -148,22 +148,49 @@ def calcular_delta_defasagem(df):
 
 def pipeline_limpeza_final(df):
     df_proc = df.copy()
+    
+    # 1. Criação do Timestamp para a Feature Store (Feast)
+    # Simulamos o evento no último dia de cada ano letivo
+    df_proc['event_timestamp'] = pd.to_datetime(df_proc['ano'].astype(str) + '-12-31')
+    
+    # 2. Normalizações Básicas
     df_proc['fase_num'] = df_proc['fase'].apply(normalizar_fases)
     df_proc['fase_ideal_num'] = df_proc['fase_ideal'].apply(normalizar_fases)
     df_proc['pedra'] = df_proc['pedra'].astype(str).str.strip().str.upper().replace('AGATA', 'ÁGATA')
     df_proc['pedra_num'] = df_proc['pedra'].map(MAPA_PEDRAS).fillna(0).astype(int)
     
+    # 3. Consolidação de Instituição
     df_proc['tipo_inst_consolidado'] = df_proc['tipo_instituicao'].apply(consolidar_instituicao)
-    df_proc['tipo_inst_num'] = df_proc['tipo_inst_consolidado'].map({'PÚBLICA': 2, 'OUTROS': 1, 'PRIVADA': 0, 'CONCLUÍDO': 0})
+    df_proc['tipo_inst_num'] = df_proc['tipo_inst_consolidado'].map({
+        'PÚBLICA': 2, 'OUTROS': 1, 'PRIVADA': 0, 'CONCLUÍDO': 0
+    })
     
-    df_proc = pd.get_dummies(df_proc, columns=['genero', 'atingiu_pv', 'indicado'], prefix=['genero', 'pv', 'indicado'], drop_first=True)
+    # 4. Encoding de Variáveis Categóricas
+    # Mantemos drop_first=True para evitar a armadilha da multicolinearidade (Dummy Variable Trap)
+    df_proc = pd.get_dummies(df_proc, columns=['genero', 'atingiu_pv', 'indicado'], 
+                             prefix=['genero', 'pv', 'indicado'], drop_first=True)
+    
+    # Converter booleanos resultantes do get_dummies para int (0/1)
     cols_dummies = [c for c in df_proc.columns if any(x in c for x in ['genero_', 'pv_', 'indicado_'])]
     df_proc[cols_dummies] = df_proc[cols_dummies].astype(int)
     
+    # 5. Limpeza de Registros e Colunas
     df_proc = df_proc.drop(df_proc[df_proc['ra'] == 'RA-1519'].index, errors='ignore')
     
-    drops = ['destaque_ieg', 'destaque_ida', 'destaque_ipv', 'rec_psicologica', 'ano_nascimento', 'n_av', 
-             'avaliadores', 'recomendacoes', 'situacao_ativo', 'fase', 'fase_ideal', 'pedra', 'turma', 
-             'tipo_instituicao', 'tipo_inst_consolidado', 'tipo_inst_num_aux']
+    # Definimos o que remover (colunas de texto sujo ou intermediárias)
+    # IMPORTANTE: Note que 'ra', 'ano', 'evadiu' e 'delta_defasagem' NÃO estão nesta lista
+    drops = [
+        'destaque_ieg', 'destaque_ida', 'destaque_ipv', 'rec_psicologica', 
+        'ano_nascimento', 'n_av', 'avaliadores', 'recomendacoes', 
+        'situacao_ativo', 'fase', 'fase_ideal', 'pedra', 'turma', 
+        'tipo_instituicao', 'tipo_inst_consolidado', 'tipo_inst_num_aux', 'nome'
+    ]
     
-    return df_proc.drop(columns=drops, errors='ignore')
+    df_proc = df_proc.drop(columns=drops, errors='ignore')
+    
+    # 6. Garantia de Tipos para o Feast (Float32 e Int64 são preferíveis)
+    # Isso evita erros de incompatibilidade no registry do Feast
+    cols_float = df_proc.select_dtypes(include=['float64']).columns
+    df_proc[cols_float] = df_proc[cols_float].astype('float32')
+    
+    return df_proc
