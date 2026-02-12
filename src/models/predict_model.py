@@ -7,7 +7,7 @@ RUN_ID = "1301b8da7bf841eba799135a9cfa8b72"
 MODEL_URI = f"runs:/{RUN_ID}/model_evasao_final"
 FEAST_REPO_PATH = "feature_repo"
 
-def explicar_risco(ra_aluno):
+def prever_risco(ra_aluno):
     store = FeatureStore(repo_path=FEAST_REPO_PATH)
     model = mlflow.sklearn.load_model(MODEL_URI)
 
