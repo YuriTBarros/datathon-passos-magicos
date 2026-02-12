@@ -56,10 +56,11 @@ jobs:
           python-version: "3.11"
       - name: Instalação de dependências
         run: pip install -r requirements.txt
-      - name: Verificação de sintaxe dos scripts de treinamento
+      - name: Check Training Script
         run: |
           export PYTHONPATH=$PYTHONPATH:.
-          # Garante a integridade lógica do script de treino antes da execução pesada
+          # Comando de diagnóstico para ver a estrutura de pastas real no GitHub
+          ls -R src/
           python3 -m py_compile src/models/train.py
 
   # --- ESTÁGIO 3: GESTÃO DE ARTEFATOS (DOCKER) ---
