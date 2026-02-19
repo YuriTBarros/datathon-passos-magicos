@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
-from src.data.utils import to_numeric_safe, normalize_gender, extract_year, collect_list
-from src.data.maps import MAP_2022, MAP_2023, MAP_2024
+from utils import to_numeric_safe, normalize_gender, extract_year, collect_list
+from maps import MAP_2022, MAP_2023, MAP_2024
 
 def calculate_ipp_2022(row):
     """Realiza a engenharia reversa do IPP para a safra 2022."""

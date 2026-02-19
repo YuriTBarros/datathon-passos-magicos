@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 import os
-import src.data.unify_dataset as unify
-import src.data.preprocessing as prep
+import unify_dataset as unify
+import preprocessing as prep
 
 def main():
     print("Iniciando processamento dos dados da Passos Mágicos...")

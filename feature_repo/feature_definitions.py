@@ -9,7 +9,7 @@ from feast import (
 from feast.types import Float32, Int64, String
 
 #1. Definição da Fonte de Dados (Parquet Processado)
-path_parquet = "/Users/yuridebarros/Documents/Study/PosTech/TechChallenges/datathon/datathon-passos-magicos/data/processed/dataset_final.parquet"
+path_parquet = "/Users/renanmelo/Documents/GitHub/datathon-passos-magicos/data/processed/dataset_final.parquet"
 
 pede_source = FileSource(
     path=path_parquet,

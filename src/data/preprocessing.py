@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import re
 from sklearn.ensemble import RandomForestClassifier
-from src.data.maps import MAPA_PEDRAS
+from maps import MAPA_PEDRAS
 
 # --- 1. FUNÇÕES ACADÊMICAS E DE RANKING ---
 

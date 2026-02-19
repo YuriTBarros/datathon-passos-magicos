@@ -11,10 +11,18 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
 import os
+from pathlib import Path
+from datetime import datetime, timezone
 
 # Configurações de Caminho
-FEAST_REPO_PATH = "feature_repo"
-DATA_PATH = "data/processed/dataset_final.parquet"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+FEAST_REPO_PATH = PROJECT_ROOT / "feature_repo"
+DATA_PATH = PROJECT_ROOT / "data" / "processed" / "dataset_final.parquet"
+MLFLOW_DB_PATH = PROJECT_ROOT / "mlflow.db"
+MLFLOW_ARTIFACTS_DIR = PROJECT_ROOT / "mlruns"
+EXPERIMENT_NAME = "Passos_Magicos_Evasao_Otimizada"
+LOCAL_MODELS_DIR = PROJECT_ROOT / "models_artifacts"
+INFERENCE_MODEL_PATH = LOCAL_MODELS_DIR / "model_evasao_inferencia.joblib"
 
 def get_training_data():
     store = FeatureStore(repo_path=FEAST_REPO_PATH)
@@ -46,6 +54,30 @@ def objective(trial, X_train, y_train, X_test, y_test):
     preds = clf.predict(X_test)
     return f1_score(y_test, preds)
 
+def setup_mlflow_experiment():
+    """
+    Configura tracking local e garante experimento com artifact_location acessível.
+    Se o experimento original apontar para caminho inválido, cria um sufixado local.
+    """
+    mlflow.set_tracking_uri(f"sqlite:///{MLFLOW_DB_PATH}")
+    MLFLOW_ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
+    artifact_root_uri = MLFLOW_ARTIFACTS_DIR.resolve().as_uri()
+
+    exp = mlflow.get_experiment_by_name(EXPERIMENT_NAME)
+    if exp is None:
+        mlflow.create_experiment(EXPERIMENT_NAME, artifact_location=artifact_root_uri)
+        return EXPERIMENT_NAME
+
+    artifact_location = (exp.artifact_location or "").lower()
+    if "/users/yuridebarros" in artifact_location:
+        local_experiment_name = f"{EXPERIMENT_NAME}_local"
+        local_exp = mlflow.get_experiment_by_name(local_experiment_name)
+        if local_exp is None:
+            mlflow.create_experiment(local_experiment_name, artifact_location=artifact_root_uri)
+        return local_experiment_name
+
+    return EXPERIMENT_NAME
+
 def run_training():
     print("📥 Coletando dados da Feature Store...")
     df = get_training_data()
@@ -57,7 +89,8 @@ def run_training():
         X, y, test_size=0.2, random_state=42, stratify=y
     )
 
-    mlflow.set_experiment("Passos_Magicos_Evasao_Otimizada")
+    experiment_name = setup_mlflow_experiment()
+    mlflow.set_experiment(experiment_name)
 
     with mlflow.start_run(run_name="RandomForest_Optuna_Final"):
         print(f"📊 Dados de Treino: {len(X_train)} | Dados de Teste: {len(X_test)}")
@@ -92,8 +125,9 @@ def run_training():
         plt.title('Matriz de Confusão - Evasão')
         plt.ylabel('Real')
         plt.xlabel('Predito')
-        plt.savefig("confusion_matrix.png")
-        mlflow.log_artifact("confusion_matrix.png")
+        confusion_path = PROJECT_ROOT / "confusion_matrix.png"
+        plt.savefig(confusion_path)
+        mlflow.log_artifact(str(confusion_path))
         plt.close()
 
         # 2. Importância das Features
@@ -103,14 +137,29 @@ def run_training():
         importances.nlargest(10).sort_values().plot(kind='barh', color='skyblue')
         plt.title('Top 10 Features que mais influenciam a Evasão')
         plt.tight_layout()
-        plt.savefig("feature_importance.png")
-        mlflow.log_artifact("feature_importance.png")
+        importance_path = PROJECT_ROOT / "feature_importance.png"
+        plt.savefig(importance_path)
+        mlflow.log_artifact(str(importance_path))
         plt.close()
         
         # Salvando o modelo
         mlflow.sklearn.log_model(final_clf, "model_evasao_final")
+
+        # Salvando arquivo local para inferência (modelo + metadados)
+        LOCAL_MODELS_DIR.mkdir(parents=True, exist_ok=True)
+        inference_bundle = {
+            "model": final_clf,
+            "feature_columns": X.columns.tolist(),
+            "target_column": "evadiu",
+            "default_threshold": 0.5,
+            "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            "best_params": study.best_params,
+        }
+        joblib.dump(inference_bundle, INFERENCE_MODEL_PATH)
+        mlflow.log_artifact(str(INFERENCE_MODEL_PATH), artifact_path="inference_bundle")
         
         print(f"✅ Sucesso! Melhor F1 no Teste: {report['1.0']['f1-score']:.4f}")
+        print(f"💾 Arquivo de inferência salvo em: {INFERENCE_MODEL_PATH}")
         print("🚀 Experimento completo registrado no MLflow.")
 
 if __name__ == "__main__":
