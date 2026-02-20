@@ -1,0 +1,14 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: passos-magicos-api
+    ports:
+      - "8008:8008"
+    volumes:
+      - ./:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8008 --reload
