@@ -116,6 +116,48 @@
 
     {
       "type": "row",
+      "title": "API",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 }
+    },
+
+    {
+      "type": "timeseries",
+      "title": "Requests per Second",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "rate(http_requests_total[1m])", "legendFormat": "RPS" }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 24 }
+    },
+
+    {
+      "type": "timeseries",
+      "title": "Latency P95",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le))",
+          "legendFormat": "P95"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 24 }
+    },
+
+    {
+      "type": "stat",
+      "title": "Error Rate %",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "(sum(rate(http_requests_total{status=~\"5..\"}[1m])) / sum(rate(http_requests_total[1m]))) * 100"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 24 }
+    },
+
+
+    {
+      "type": "row",
       "title": "MLFlow - Experiments",
       "gridPos": { "x": 0, "y": 30, "w": 24, "h": 1 }
     },
