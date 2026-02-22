@@ -1,0 +1,228 @@
+{
+  "title": "Datathon Observability",
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 2,
+  "refresh": "5s",
+  "templating": {
+    "list": [
+      {
+        "name": "container",
+        "type": "query",
+        "datasource": "Prometheus",
+        "refresh": 1,
+        "definition": "label_values(container_cpu_usage_seconds_total, container)",
+        "query": {
+          "query": "label_values(container_cpu_usage_seconds_total, container)",
+          "refId": "StandardVariableQuery"
+        },
+        "includeAll": true,
+        "multi": true
+      }
+    ]
+  },
+  "panels": [
+
+    {
+      "type": "row",
+      "title": "INFRA - Containers",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 }
+    },
+
+    {
+      "type": "timeseries",
+      "title": "CPU %",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 0, "y": 1, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{container=~\"$container\"}[1m])) by (container) * 100",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory (MB)",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 12, "y": 1, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "container_memory_usage_bytes{container=~\"$container\"} / 1024 / 1024",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Network IN (bytes/s)",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "rate(container_network_receive_bytes_total{container=~\"$container\"}[1m])",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Network OUT (bytes/s)",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "rate(container_network_transmit_bytes_total{container=~\"$container\"}[1m])",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "OOM Events",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 0, "y": 15, "w": 12, "h": 5 },
+      "targets": [
+        {
+          "expr": "sum(container_oom_events_total{container=~\"$container\"})",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Container Health",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 12, "y": 15, "w": 12, "h": 5 },
+      "targets": [
+        {
+          "expr": "container_health_state{container=~\"$container\"}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "logs",
+      "title": "Container Logs",
+      "datasource": "Loki",
+      "gridPos": { "x": 0, "y": 20, "w": 24, "h": 10 },
+      "targets": [
+        {
+          "expr": "{job=\"docker\", container=~\"$container\"}",
+          "refId": "A"
+        }
+      ]
+    },
+
+    {
+      "type": "row",
+      "title": "MLFlow - Experiments",
+      "gridPos": { "x": 0, "y": 30, "w": 24, "h": 1 }
+    },
+
+    {
+      "type": "stat",
+      "title": "Total Runs",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 0, "y": 31, "w": 6, "h": 6 },
+      "targets": [
+        { "expr": "mlflow_total_runs", "refId": "A" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Finished Runs",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 6, "y": 31, "w": 6, "h": 6 },
+      "targets": [
+        { "expr": "mlflow_finished_runs", "refId": "A" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Failed Runs",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 12, "y": 31, "w": 6, "h": 6 },
+      "targets": [
+        { "expr": "mlflow_failed_runs", "refId": "A" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Running Runs",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 18, "y": 31, "w": 6, "h": 6 },
+      "targets": [
+        { "expr": "mlflow_running_runs", "refId": "A" }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "Runs by Status",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 0, "y": 37, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "mlflow_runs_by_status", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Runs per Experiment",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 12, "y": 37, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "mlflow_runs_per_experiment", "refId": "A" }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "Runs per Experiment by Status",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 0, "y": 45, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "mlflow_runs_by_experiment_status", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Best Accuracy per Experiment",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 12, "y": 45, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "max by (experiment) (mlflow_best_accuracy)", "refId": "A" }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "Best Metrics per Experiment",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 0, "y": 53, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "mlflow_best_metric_per_experiment", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Runs per Day",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 12, "y": 53, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "mlflow_runs_per_day", "refId": "A" }
+      ]
+    },
+
+    {
+      "type": "timeseries",
+      "title": "DB Size (MB)",
+      "datasource": "Prometheus",
+      "gridPos": { "x": 0, "y": 61, "w": 24, "h": 8 },
+      "targets": [
+        { "expr": "mlflow_db_size_bytes / 1024 / 1024", "refId": "A" }
+      ]
+    }
+
+  ]
+}
