@@ -13,6 +13,7 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 from feast import FeatureStore
 from pydantic import BaseModel, Field
+from prometheus_fastapi_instrumentator import Instrumentator
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -43,6 +44,9 @@ FEATURE_REFS = [
 
 
 app = FastAPI(title="Passos Magicos Inference API", version="1.0.0")
+
+# Instrumentação Prometheus
+Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 
 MODEL_BUNDLE: dict[str, Any] | None = None
 TRAIN_LOCK = threading.Lock()
