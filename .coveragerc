@@ -1,0 +1,15 @@
+[run]
+source =
+    src
+    data
+
+omit =
+    */tests/*
+    */venv/*
+    */.venv/*
+    */notebooks/*
+    */feature_repo/*
+    */monitoring/grafana/*
+    */monitoring/loki/*
+    */monitoring/prometheus/*
+    */monitoring/promtail/*
