@@ -7,6 +7,7 @@ on:
     branches: [ "main", "develop" ]
 
 jobs:
+
   # --- ESTÁGIO 1: VALIDAÇÃO TÉCNICA E QUALIDADE ---
   quality-and-ml-validation:
     runs-on: ubuntu-latest
@@ -24,6 +25,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        pip install coverage
 
     - name: Análise estática de código (Flake8)
       run: |
@@ -34,49 +36,53 @@ jobs:
       run: |
         cd feature_repo
         mkdir -p data
-        # Validação das definições de infraestrutura e tipos de dados do Feast
         feast plan
 
     - name: Execução de Testes Unitários e Cobertura
       run: |
-        export PYTHONPATH=$PYTHONPATH:.
-        coverage run -m unittest discover tests
-        coverage report -m
+        export PYTHONPATH=.
+        coverage run -m unittest discover -s tests -v
+        coverage report -m --fail-under=60
+
 
   # --- ESTÁGIO 2: VERIFICAÇÃO DE INTEGRIDADE DO MODELO ---
   model-integrity-check:
     needs: quality-and-ml-validation
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout do repositório
         uses: actions/checkout@v3
+
       - name: Ambiente Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
+
       - name: Instalação de dependências
         run: pip install -r requirements.txt
+
       - name: Check Training Script
         run: |
-          export PYTHONPATH=$PYTHONPATH:.
-          # Comando de diagnóstico para ver a estrutura de pastas real no GitHub
+          export PYTHONPATH=.
           ls -R src/
           python3 -m py_compile src/models/train.py
 
+
   # --- ESTÁGIO 3: GESTÃO DE ARTEFATOS (DOCKER) ---
   #containerization:
-  # needs: [quality-and-ml-validation, model-integrity-check]
+  #  needs: [quality-and-ml-validation, model-integrity-check]
   #  if: github.ref == 'refs/heads/main' && github.event_name == 'push'
   #  runs-on: ubuntu-latest
+  #
   #  steps:
-  #   - name: Checkout do repositório
-  #     uses: actions/checkout@v3
-      
+  #    - name: Checkout do repositório
+  #      uses: actions/checkout@v3
+  #
   #    - name: Configuração do Docker Buildx
   #      uses: docker/setup-buildx-action@v2
-
-      # Preparação da imagem para deploy em ambiente produtivo
+  #
   #    - name: Build da imagem Docker
   #      run: |
   #        echo "Iniciando build da imagem para produção..."
-          # docker build -t passos-magicos-api .
+  #        # docker build -t passos-magicos-api .
